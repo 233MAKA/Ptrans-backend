@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "name": "alice leroi",
+    "email": "alice.leroi@gmail.com",
+    "githubUsername": "usert",
+    "canEdit": true,
+    "canValidate": true,
+    "canPublish": false
+  },
+  {
+    "name": "valerie martin",
+    "email": "valeriemartin@gmail.com",
+    "githubUsername": "",
+    "canEdit": true,
+    "canValidate": true,
+    "canPublish": true
+  }
+]
