@@ -17,7 +17,7 @@ router.get('/', attachSession, (req, res) => {
   });
 });
 
-router.post('/', requireAuth, requirePermission('documents:write'), (req, res) => {
+router.post('/', requireAuth, requirePermission('documents:edit'), (req, res) => {
   const { title } = req.body || {};
   if (!title || typeof title !== 'string') {
     return res.status(400).json({ message: 'title is required' });

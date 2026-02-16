@@ -4,7 +4,7 @@
   "description": "Auth and API backend for Ptrans",
   "main": "server.js",
   "scripts": {
-    "dev": "node ./node_modules/nodemon/bin/nodemon.js server.js",
+    "dev": "node ./node_modules/nodemon/bin/nodemon.js --ignore data/users.json server.js",
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
