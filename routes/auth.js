@@ -6,6 +6,7 @@ const { attachSession, requireAuth } = require('../middleware/auth');
 const {
   exchangeCodeForAccessToken,
   getGithubAuthenticatedUser,
+  revokeGithubOAuthGrant,
 } = require('../utils/githubApi');
 const { findPermissionFlagsByIdentity } = require('../utils/userStore');
 const { createSession, revokeSession } = require('../utils/sessionStore');
@@ -242,7 +243,23 @@ router.get('/permissions', requireAuth, (req, res) => {
   return res.json({ permissions: req.auth.permissions || [] });
 });
 
-router.post('/logout', requireAuth, (req, res) => {
+router.post('/logout', requireAuth, async (req, res) => {
+  if (
+    req.auth?.provider === 'github' &&
+    req.auth?.externalAccessToken &&
+    hasGithubOAuthConfig
+  ) {
+    try {
+      await revokeGithubOAuthGrant({
+        accessToken: req.auth.externalAccessToken,
+        clientId: githubConfig.clientId,
+        clientSecret: githubConfig.clientSecret,
+      });
+    } catch (_error) {
+      // Best effort: local logout must still succeed.
+    }
+  }
+
   revokeSession(req.auth.token);
   return res.status(204).send();
 });
