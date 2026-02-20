@@ -28,6 +28,7 @@ const corsOptions = {
           'http://localhost:5672',
           'http://localhost:8080',
           'http://localhost:8090',
+          'http://localhost:9090',
           'http://localhost:9999',
           'http://localhost:15672',
           'http://127.0.0.1:3000',
@@ -35,6 +36,7 @@ const corsOptions = {
           'http://127.0.0.1:5404',
           'http://127.0.0.1:5405',
           'http://127.0.0.1:5406',
+          'http://127.0.0.1:9090',
         ];
     
     // Check if origin is allowed or if it's from local network (192.168.x.x or 10.x.x.x)
