@@ -36,7 +36,26 @@ async function getGithubAuthenticatedUser(accessToken) {
   return data;
 }
 
+async function revokeGithubOAuthGrant({ accessToken, clientId, clientSecret }) {
+  if (!accessToken || !clientId || !clientSecret) return;
+
+  await axios.delete(`https://api.github.com/applications/${clientId}/grant`, {
+    auth: {
+      username: clientId,
+      password: clientSecret,
+    },
+    data: {
+      access_token: accessToken,
+    },
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
+}
+
 module.exports = {
   exchangeCodeForAccessToken,
   getGithubAuthenticatedUser,
+  revokeGithubOAuthGrant,
 };

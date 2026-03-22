@@ -1,12 +1,14 @@
 const express = require('express');
 
 const { githubConfig, hasGithubOAuthConfig } = require('../config/github');
-const { getPermissionsForRole } = require('../config/authorization');
+const { getPermissionsForRole, getPermissionsFromFlags } = require('../config/authorization');
 const { attachSession, requireAuth } = require('../middleware/auth');
 const {
   exchangeCodeForAccessToken,
   getGithubAuthenticatedUser,
-} = require('../utils/githubApi'); 
+  revokeGithubOAuthGrant,
+} = require('../utils/githubApi');
+const { findPermissionFlagsByIdentity } = require('../utils/userStore');
 const { createSession, revokeSession } = require('../utils/sessionStore');
 const generateId = require('../utils/generateId');
 
@@ -153,20 +155,40 @@ router.get('/github/callback', async (req, res) => {
     }
 
     const adminUsers = parseCsvSet(process.env.GITHUB_ADMIN_USERS || '');
-    const role = adminUsers.has(login) ? 'admin' : 'user';
+    const isAdmin = adminUsers.has(login);
+    const role = isAdmin ? 'admin' : 'user';
+
+    const matchedFlags = isAdmin
+      ? { canEdit: true, canValidate: true, canPublish: true, matched: true }
+      : findPermissionFlagsByIdentity({
+          githubUsername: githubUser.login,
+          email: githubUser.email,
+        });
+
+    const permissions = isAdmin
+      ? getPermissionsForRole(role)
+      : getPermissionsFromFlags({
+          canEdit: matchedFlags.canEdit,
+          canValidate: matchedFlags.canValidate,
+          canPublish: matchedFlags.canPublish,
+        });
 
     const session = createSession({
       type: 'user',
       provider: 'github',
-      permissions: getPermissionsForRole(role),
+      permissions,
       externalAccessToken: accessToken,
       user: {
         id: `github:${githubUser.id}`,
         name: githubUser.name || githubUser.login,
         username: githubUser.login,
+        email: githubUser.email || null,
         avatarUrl: githubUser.avatar_url,
         profileUrl: githubUser.html_url,
         role,
+        canEdit: Boolean(matchedFlags.canEdit),
+        canValidate: Boolean(matchedFlags.canValidate),
+        canPublish: Boolean(matchedFlags.canPublish),
       },
     });
 
@@ -221,7 +243,23 @@ router.get('/permissions', requireAuth, (req, res) => {
   return res.json({ permissions: req.auth.permissions || [] });
 });
 
-router.post('/logout', requireAuth, (req, res) => {
+router.post('/logout', requireAuth, async (req, res) => {
+  if (
+    req.auth?.provider === 'github' &&
+    req.auth?.externalAccessToken &&
+    hasGithubOAuthConfig
+  ) {
+    try {
+      await revokeGithubOAuthGrant({
+        accessToken: req.auth.externalAccessToken,
+        clientId: githubConfig.clientId,
+        clientSecret: githubConfig.clientSecret,
+      });
+    } catch (_error) {
+      // Best effort: local logout must still succeed.
+    }
+  }
+
   revokeSession(req.auth.token);
   return res.status(204).send();
 });
