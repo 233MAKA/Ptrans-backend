@@ -5,6 +5,7 @@ const express = require('express');
 
 const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documents');
+const githubRoutes = require('./routes/github');
 const userRoutes = require('./routes/users');
 
 const app = express();
@@ -18,6 +19,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/github', githubRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
 
