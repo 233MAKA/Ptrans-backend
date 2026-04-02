@@ -1,5 +1,5 @@
 const { getSession, updateSession } = require('../utils/sessionStore');
-const { getPermissionsForRole, getPermissionsFromFlags } = require('../config/authorization');
+const { getPermissionsFromFlags } = require('../config/authorization');
 const { findPermissionFlagsByIdentity } = require('../utils/userStore');
 
 function parseBearerToken(req) {
@@ -15,42 +15,29 @@ function hasPermission(auth, permission) {
   return grantedPermissions.includes('*') || grantedPermissions.includes(permission);
 }
 
-function parseCsvSet(value = '') {
-  return new Set(
-    String(value)
-      .split(',')
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean),
-  );
-}
-
 function refreshGithubSession(session) {
   if (!session || session.provider !== 'github' || session.type !== 'user') return session;
 
   const login = String(session.user?.username || '').trim().toLowerCase();
   const email = String(session.user?.email || '').trim().toLowerCase();
-  const adminUsers = parseCsvSet(process.env.GITHUB_ADMIN_USERS || '');
-  const isAdmin = Boolean(login) && adminUsers.has(login);
+  const matchedFlags = findPermissionFlagsByIdentity({
+    githubUsername: login,
+    email,
+  });
+  const isAdmin = Boolean(matchedFlags.isAdmin);
   const role = isAdmin ? 'admin' : 'user';
 
-  const matchedFlags = isAdmin
-    ? { canEdit: true, canValidate: true, canPublish: true }
-    : findPermissionFlagsByIdentity({
-        githubUsername: login,
-        email,
-      });
-
-  const permissions = isAdmin
-    ? getPermissionsForRole(role)
-    : getPermissionsFromFlags({
-        canEdit: matchedFlags.canEdit,
-        canValidate: matchedFlags.canValidate,
-        canPublish: matchedFlags.canPublish,
-      });
+  const permissions = getPermissionsFromFlags({
+    isAdmin,
+    canEdit: matchedFlags.canEdit,
+    canValidate: matchedFlags.canValidate,
+    canPublish: matchedFlags.canPublish,
+  });
 
   const nextUser = {
     ...session.user,
     role,
+    isAdmin,
     canEdit: Boolean(matchedFlags.canEdit),
     canValidate: Boolean(matchedFlags.canValidate),
     canPublish: Boolean(matchedFlags.canPublish),
@@ -61,6 +48,7 @@ function refreshGithubSession(session) {
     JSON.stringify(currentPermissions) !== JSON.stringify(permissions);
   const userChanged =
     session.user?.role !== nextUser.role ||
+    Boolean(session.user?.isAdmin) !== nextUser.isAdmin ||
     Boolean(session.user?.canEdit) !== nextUser.canEdit ||
     Boolean(session.user?.canValidate) !== nextUser.canValidate ||
     Boolean(session.user?.canPublish) !== nextUser.canPublish;

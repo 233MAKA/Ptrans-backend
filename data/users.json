@@ -2,7 +2,8 @@
   {
     "name": "alice leroi",
     "email": "alice.leroi@gmail.com",
-    "githubUsername": "usert",
+    "githubUsername": "alice",
+    "isAdmin": false,
     "canEdit": true,
     "canValidate": true,
     "canPublish": false
@@ -10,9 +11,37 @@
   {
     "name": "valerie martin",
     "email": "valeriemartin@gmail.com",
-    "githubUsername": "",
+    "githubUsername": "val",
+    "isAdmin": false,
     "canEdit": true,
     "canValidate": true,
     "canPublish": true
+  },
+  {
+    "name": "Hajare Oulbaz",
+    "email": "hajare.oulbaz@etu.univ-nantes.fr",
+    "githubUsername": "hajareou",
+    "isAdmin": true,
+    "canEdit": false,
+    "canValidate": false,
+    "canPublish": false
+  },
+  {
+    "name": "Jing Xuan",
+    "email": "jingxuan_c@qq.com",
+    "githubUsername": "233maka",
+    "isAdmin": true,
+    "canEdit": false,
+    "canValidate": false,
+    "canPublish": false
+  },
+  {
+    "name": "Tetiana Polonina",
+    "email": "tapolonina3@gmail.com",
+    "githubUsername": "tapolonin",
+    "isAdmin": true,
+    "canEdit": false,
+    "canValidate": false,
+    "canPublish": false
   }
 ]

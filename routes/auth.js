@@ -154,24 +154,20 @@ router.get('/github/callback', async (req, res) => {
       })
     }
 
-    const adminUsers = parseCsvSet(process.env.GITHUB_ADMIN_USERS || '')
-    const isAdmin = adminUsers.has(login)
+    const matchedFlags = findPermissionFlagsByIdentity({
+      githubUsername: githubUser.login,
+      email: githubUser.email,
+    })
+
+    const isAdmin = Boolean(matchedFlags.isAdmin)
     const role = isAdmin ? 'admin' : 'user'
 
-    const matchedFlags = isAdmin
-      ? { canEdit: true, canValidate: true, canPublish: true, matched: true }
-      : findPermissionFlagsByIdentity({
-          githubUsername: githubUser.login,
-          email: githubUser.email,
-        })
-
-    const permissions = isAdmin
-      ? getPermissionsForRole(role)
-      : getPermissionsFromFlags({
-          canEdit: matchedFlags.canEdit,
-          canValidate: matchedFlags.canValidate,
-          canPublish: matchedFlags.canPublish,
-        })
+    const permissions = getPermissionsFromFlags({
+      isAdmin,
+      canEdit: matchedFlags.canEdit,
+      canValidate: matchedFlags.canValidate,
+      canPublish: matchedFlags.canPublish,
+    })
 
     const session = createSession({
       type: 'user',
@@ -186,6 +182,7 @@ router.get('/github/callback', async (req, res) => {
         avatarUrl: githubUser.avatar_url,
         profileUrl: githubUser.html_url,
         role,
+        isAdmin,
         canEdit: Boolean(matchedFlags.canEdit),
         canValidate: Boolean(matchedFlags.canValidate),
         canPublish: Boolean(matchedFlags.canPublish),

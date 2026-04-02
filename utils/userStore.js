@@ -20,13 +20,16 @@ function normalizeLower(value = '') {
 }
 
 function normalizeUserRecord(record = {}) {
+  const isAdmin = Boolean(record.isAdmin);
+
   return {
     name: normalizeText(record.name),
     email: normalizeLower(record.email),
     githubUsername: normalizeLower(record.githubUsername),
-    canEdit: Boolean(record.canEdit),
-    canValidate: Boolean(record.canValidate),
-    canPublish: Boolean(record.canPublish),
+    isAdmin,
+    canEdit: isAdmin ? false : Boolean(record.canEdit),
+    canValidate: isAdmin ? false : Boolean(record.canValidate),
+    canPublish: isAdmin ? false : Boolean(record.canPublish),
   };
 }
 
@@ -77,9 +80,10 @@ function findPermissionFlagsByIdentity({ githubUsername, email } = {}) {
   }
 
   return {
-    canEdit: Boolean(matchedUser.canEdit),
-    canValidate: Boolean(matchedUser.canValidate),
-    canPublish: Boolean(matchedUser.canPublish),
+    isAdmin: Boolean(matchedUser.isAdmin),
+    canEdit: Boolean(matchedUser.isAdmin || matchedUser.canEdit),
+    canValidate: Boolean(matchedUser.isAdmin || matchedUser.canValidate),
+    canPublish: Boolean(matchedUser.isAdmin || matchedUser.canPublish),
     matched: true,
     user: matchedUser,
   };
