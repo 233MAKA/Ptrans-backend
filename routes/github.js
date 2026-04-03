@@ -13,10 +13,10 @@ function ghHeaders() {
   return headers;
 }
 
-// GET /api/github/contents/:owner/:repo/*path
-router.get('/contents/:owner/:repo/*', async (req, res) => {
+async function getRepoContents(req, res) {
   const { owner, repo } = req.params;
-  const path = req.params[0] || '';
+  const pathParts = req.params.path;
+  const path = Array.isArray(pathParts) ? pathParts.join('/') : pathParts || '';
   try {
     const { data } = await axios.get(
       `${GH_API}/repos/${owner}/${repo}/contents/${path}`,
@@ -26,7 +26,11 @@ router.get('/contents/:owner/:repo/*', async (req, res) => {
   } catch (err) {
     res.status(err.response?.status || 500).json({ message: err.message });
   }
-});
+}
+
+// GET /api/github/contents/:owner/:repo/*path
+router.get('/contents/:owner/:repo', getRepoContents);
+router.get('/contents/:owner/:repo/*path', getRepoContents);
 
 // GET /api/github/commits?owner=&repo=&path=
 router.get('/commits', async (req, res) => {
@@ -43,9 +47,10 @@ router.get('/commits', async (req, res) => {
 });
 
 // GET /api/github/raw/:owner/:repo/:ref/*path
-router.get('/raw/:owner/:repo/:ref/*', async (req, res) => {
+router.get('/raw/:owner/:repo/:ref/*path', async (req, res) => {
   const { owner, repo, ref } = req.params;
-  const path = req.params[0];
+  const pathParts = req.params.path;
+  const path = Array.isArray(pathParts) ? pathParts.join('/') : pathParts || '';
   try {
     const { data } = await axios.get(
       `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${path}`,
