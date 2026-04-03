@@ -103,6 +103,24 @@ function revokeSession(token) {
   return removed;
 }
 
+function updateSession(token, updates = {}) {
+  if (!token || !sessions.has(token)) return null;
+
+  const current = sessions.get(token);
+  const next = {
+    ...current,
+    ...updates,
+    user: {
+      ...(current?.user || {}),
+      ...(updates?.user || {}),
+    },
+  };
+
+  sessions.set(token, next);
+  persistSessions();
+  return next;
+}
+
 loadSessions();
 purgeExpiredSessions();
 
@@ -110,4 +128,5 @@ module.exports = {
   createSession,
   getSession,
   revokeSession,
+  updateSession,
 };

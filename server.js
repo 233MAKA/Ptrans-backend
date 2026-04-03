@@ -59,10 +59,12 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Health check endpoint
+// Health check endpoint
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// API routes
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/github', githubRoutes);
@@ -70,10 +72,12 @@ app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
 
 // 404 handler
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
 });
 
+// Error handler
 // Error handler
 app.use((err, _req, res, _next) => {
   const status = Number(err?.status || 500);
@@ -81,6 +85,8 @@ app.use((err, _req, res, _next) => {
   res.status(status).json({ message });
 });
 
+// Start server on all network interfaces (0.0.0.0) to allow LAN access
+app.listen(port, '0.0.0.0', () => {
 // Start server on all network interfaces (0.0.0.0) to allow LAN access
 app.listen(port, '0.0.0.0', () => {
   console.log(`Ptrans-backend listening on port ${port}`);

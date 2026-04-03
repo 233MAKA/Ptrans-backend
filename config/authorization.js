@@ -34,7 +34,11 @@ function getPermissionsForRole(role) {
   return normalizePermissions(ROLE_PERMISSIONS[safeRole] || []);
 }
 
-function getPermissionsFromFlags({ canEdit, canValidate, canPublish } = {}) {
+function getPermissionsFromFlags({ canEdit, canValidate, canPublish, isAdmin } = {}) {
+  if (isAdmin) {
+    return getPermissionsForRole('admin');
+  }
+
   const permissions = [PERMISSIONS.DOCUMENTS_READ, PERMISSIONS.PROFILE_READ];
 
   if (canEdit) permissions.push(PERMISSIONS.DOCUMENTS_EDIT);
