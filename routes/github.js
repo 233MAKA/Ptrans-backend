@@ -1,5 +1,6 @@
 const express = require('express');
 const axios = require('axios');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const router = express.Router();
 
@@ -13,6 +14,11 @@ function ghHeaders() {
   return headers;
 }
 
+function getProxyAgent() {
+  const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+  return proxy ? new HttpsProxyAgent(proxy) : undefined;
+}
+
 async function getRepoContents(req, res) {
   const { owner, repo } = req.params;
   const pathParts = req.params.path;
@@ -20,7 +26,7 @@ async function getRepoContents(req, res) {
   try {
     const { data } = await axios.get(
       `${GH_API}/repos/${owner}/${repo}/contents/${path}`,
-      { headers: ghHeaders() },
+      { headers: ghHeaders(), httpsAgent: getProxyAgent(), proxy: false },
     );
     res.json(data);
   } catch (err) {
@@ -38,7 +44,7 @@ router.get('/commits', async (req, res) => {
   try {
     const { data } = await axios.get(
       `${GH_API}/repos/${owner}/${repo}/commits?path=${encodeURIComponent(path)}&per_page=1`,
-      { headers: ghHeaders() },
+      { headers: ghHeaders(), httpsAgent: getProxyAgent(), proxy: false },
     );
     res.json(data);
   } catch (err) {
@@ -54,7 +60,7 @@ router.get('/raw/:owner/:repo/:ref/*path', async (req, res) => {
   try {
     const { data } = await axios.get(
       `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${path}`,
-      { responseType: 'text' },
+      { responseType: 'text', httpsAgent: getProxyAgent(), proxy: false },
     );
     res.send(data);
   } catch (err) {
