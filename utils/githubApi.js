@@ -1,4 +1,10 @@
 const axios = require('axios');
+const { HttpsProxyAgent } = require('https-proxy-agent');
+
+function getProxyAgent() {
+  const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+  return proxy ? new HttpsProxyAgent(proxy) : undefined;
+}
 
 async function exchangeCodeForAccessToken({ code, clientId, clientSecret, redirectUri }) {
   const { data } = await axios.post(
@@ -10,9 +16,9 @@ async function exchangeCodeForAccessToken({ code, clientId, clientSecret, redire
       redirect_uri: redirectUri,
     },
     {
-      headers: {
-        Accept: 'application/json',
-      },
+      headers: { Accept: 'application/json' },
+      httpsAgent: getProxyAgent(),
+      proxy: false,
     },
   );
 
@@ -31,6 +37,8 @@ async function getGithubAuthenticatedUser(accessToken) {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     },
+    httpsAgent: getProxyAgent(),
+    proxy: false,
   });
 
   return data;

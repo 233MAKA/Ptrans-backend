@@ -22,6 +22,7 @@
   "dependencies": {
     "@octokit/rest": "^22.0.1",
     "axios": "^1.13.5",
+    "https-proxy-agent": "^7.0.6",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1"
