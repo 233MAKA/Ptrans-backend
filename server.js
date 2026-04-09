@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documents');
 const githubRoutes = require('./routes/github');
 const userRoutes = require('./routes/users');
+const notesRoutes = require('./routes/notes');
 
 const app = express();
 const port = Number(process.env.PORT || 8091);
@@ -66,6 +67,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/github', githubRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/notes', notesRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
