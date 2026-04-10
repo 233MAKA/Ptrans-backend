@@ -8,7 +8,7 @@ const {
   getGithubAuthenticatedUser,
   revokeGithubOAuthGrant,
 } = require('../utils/githubApi')
-const { findPermissionFlagsByIdentity } = require('../utils/userStore')
+const { ensureUserExists, findPermissionFlagsByIdentity } = require('../utils/userStore')
 const { createSession, revokeSession } = require('../utils/sessionStore')
 const generateId = require('../utils/generateId')
 
@@ -153,6 +153,12 @@ router.get('/github/callback', async (req, res) => {
         message: 'This GitHub account is not allowed to access this application',
       })
     }
+
+    ensureUserExists({
+      name: githubUser.name || githubUser.login,
+      email: githubUser.email,
+      githubUsername: githubUser.login,
+    })
 
     const matchedFlags = findPermissionFlagsByIdentity({
       githubUsername: githubUser.login,
