@@ -125,7 +125,7 @@ router.put(
         repo: DOCS_REPO,
         path: INDEX_PATH,
         content: serialized,
-        message: `Update status for ${docId} → ${nextStatus}`,
+        message: `Update status for ${doc.title} → ${nextStatus}`,
         branch: DOCS_BRANCH,
         sha,
       });

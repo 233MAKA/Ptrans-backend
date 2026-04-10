@@ -99,12 +99,14 @@ router.put('/:docId', express.json(), async (req, res) => {
 
     const serialized = JSON.stringify(notes, null, 2) + '\n';
 
+    const title = await getDocumentTitle(docId);
+
     await putRepoFile({
       owner: DOCS_OWNER,
       repo: DOCS_REPO,
       path: NOTES_PATH,
       content: serialized,
-      message: `Update note for ${docId}`,
+      message: `Update note for ${title}`,
       branch: DOCS_BRANCH,
       sha,
     });
@@ -161,5 +163,24 @@ router.get('/_debug/file', async (_req, res) => {
     });
   }
 });
+
+async function getDocumentTitle(docId) {
+  const file = await getRepoFile({
+    owner: DOCS_OWNER,
+    repo: DOCS_REPO,
+    path: 'index.json',
+    ref: DOCS_BRANCH,
+  });
+
+  if (!file) return docId;
+
+  try {
+    const docs = JSON.parse(file.content);
+    const doc = docs.find((d) => d.id === docId);
+    return doc?.title || docId;
+  } catch {
+    return docId;
+  }
+}
 
 module.exports = router;
