@@ -154,17 +154,11 @@ router.get('/github/callback', async (req, res) => {
       })
     }
 
-    const ensuredUser = ensureUserExists({
+    ensureUserExists({
       githubId: githubUser.id,
       name: githubUser.name || githubUser.login,
       email: githubUser.email,
       githubUsername: githubUser.login,
-    })
-
-    console.log('[auth] GitHub user ensured in user store:', {
-      login: githubUser.login,
-      githubId: String(githubUser.id),
-      stored: Boolean(ensuredUser),
     })
 
     const matchedFlags = findPermissionFlagsByIdentity({
