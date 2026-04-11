@@ -9,6 +9,12 @@ const fallbackUsersFilePath = path.resolve(__dirname, '..', 'data', 'users.json'
 const USERS_FILE_PATH = configuredUsersFilePath ||
   (fs.existsSync(path.dirname(defaultUsersFilePath)) ? defaultUsersFilePath : fallbackUsersFilePath);
 
+function getUsersFileSourceLabel() {
+  if (configuredUsersFilePath) return 'env';
+  if (USERS_FILE_PATH === defaultUsersFilePath) return 'default-dashboard-data-admin';
+  return 'fallback-backend-data';
+}
+
 function getUsersFilePath() {
   return USERS_FILE_PATH;
 }
@@ -125,6 +131,7 @@ function ensureUserExists(user = {}) {
     !normalizedCandidate.email &&
     !normalizedCandidate.githubUsername
   ) {
+    console.warn('[userStore] Skipped user creation because identity is empty');
     return null;
   }
 
@@ -159,7 +166,12 @@ function ensureUserExists(user = {}) {
       mergedUser.email !== existing.email ||
       mergedUser.githubUsername !== existing.githubUsername;
 
-    if (!hasChanged) return existing;
+    if (!hasChanged) {
+      console.log(
+        `[userStore] User already present in ${getUsersFilePath()}: ${existing.githubUsername || existing.email || existing.githubId}`,
+      );
+      return existing;
+    }
 
     const nextUsers = users.map((entry) => {
       if (entry === existing) return mergedUser;
@@ -167,13 +179,23 @@ function ensureUserExists(user = {}) {
     });
 
     replaceUsers(nextUsers);
+    console.log(
+      `[userStore] Updated user in ${getUsersFilePath()}: ${mergedUser.githubUsername || mergedUser.email || mergedUser.githubId}`,
+    );
     return mergedUser;
   }
 
   const nextUsers = [...users, normalizedCandidate];
   replaceUsers(nextUsers);
+  console.log(
+    `[userStore] Added user to ${getUsersFilePath()}: ${normalizedCandidate.githubUsername || normalizedCandidate.email || normalizedCandidate.githubId}`,
+  );
   return normalizedCandidate;
 }
+
+console.log(
+  `[userStore] Using users file (${getUsersFileSourceLabel()}): ${getUsersFilePath()}`,
+);
 
 module.exports = {
   USERS_FILE_PATH,
