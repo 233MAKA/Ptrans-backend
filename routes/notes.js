@@ -8,6 +8,8 @@ const DOCS_REPO = process.env.GITHUB_DOCS_REPO;
 const DOCS_BRANCH = process.env.GITHUB_DOCS_BRANCH || 'main';
 const NOTES_PATH = process.env.GITHUB_NOTES_PATH || 'notes.json';
 
+const { attachSession, requireAuth } = require('../middleware/auth');
+
 function parseNotesFile(content) {
   if (!content || !content.trim()) return {};
 
@@ -21,6 +23,9 @@ function parseNotesFile(content) {
 
 function getEditorIdentity(req) {
   return (
+    req.auth?.user?.email ||
+    req.auth?.user?.username ||
+    req.auth?.user?.name ||
     req.user?.email ||
     req.user?.login ||
     req.user?.username ||
@@ -52,7 +57,7 @@ async function readNotesDocument() {
 }
 
 // GET /api/notes/:docId
-router.get('/:docId', async (req, res) => {
+router.get('/:docId', attachSession, async (req, res) => {
   console.log('GET /api/notes hit', req.params.docId);
   try {
     const { docId } = req.params;
@@ -83,7 +88,7 @@ router.get('/:docId', async (req, res) => {
 });
 
 // PUT /api/notes/:docId
-router.put('/:docId', express.json(), async (req, res) => {
+router.put('/:docId', requireAuth, express.json(), async (req, res) => {
   console.log('PUT /api/notes hit', req.params.docId, req.body);
     try {
     const { docId } = req.params;
