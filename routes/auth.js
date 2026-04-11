@@ -155,12 +155,14 @@ router.get('/github/callback', async (req, res) => {
     }
 
     ensureUserExists({
+      githubId: githubUser.id,
       name: githubUser.name || githubUser.login,
       email: githubUser.email,
       githubUsername: githubUser.login,
     })
 
     const matchedFlags = findPermissionFlagsByIdentity({
+      githubId: githubUser.id,
       githubUsername: githubUser.login,
       email: githubUser.email,
     })
@@ -182,6 +184,7 @@ router.get('/github/callback', async (req, res) => {
       externalAccessToken: accessToken,
       user: {
         id: `github:${githubUser.id}`,
+        githubId: String(githubUser.id),
         name: githubUser.name || githubUser.login,
         username: githubUser.login,
         email: githubUser.email || null,

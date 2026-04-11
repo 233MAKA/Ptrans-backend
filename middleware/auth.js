@@ -1,6 +1,15 @@
 const { getSession, updateSession } = require('../utils/sessionStore');
 const { getPermissionsFromFlags } = require('../config/authorization');
-const { findPermissionFlagsByIdentity } = require('../utils/userStore');
+const { ensureUserExists, findPermissionFlagsByIdentity } = require('../utils/userStore');
+
+function extractGithubId(user = {}) {
+  if (user.githubId) return String(user.githubId).trim();
+
+  const rawId = String(user.id || '').trim();
+  if (!rawId.startsWith('github:')) return '';
+
+  return rawId.slice('github:'.length);
+}
 
 function parseBearerToken(req) {
   const authHeader = req.headers.authorization;
@@ -18,9 +27,19 @@ function hasPermission(auth, permission) {
 function refreshGithubSession(session) {
   if (!session || session.provider !== 'github' || session.type !== 'user') return session;
 
+  const githubId = extractGithubId(session.user);
   const login = String(session.user?.username || '').trim().toLowerCase();
   const email = String(session.user?.email || '').trim().toLowerCase();
+
+  ensureUserExists({
+    githubId,
+    name: session.user?.name || session.user?.username,
+    email,
+    githubUsername: login,
+  });
+
   const matchedFlags = findPermissionFlagsByIdentity({
+    githubId,
     githubUsername: login,
     email,
   });
@@ -36,6 +55,7 @@ function refreshGithubSession(session) {
 
   const nextUser = {
     ...session.user,
+    githubId,
     role,
     isAdmin,
     canEdit: Boolean(matchedFlags.canEdit),

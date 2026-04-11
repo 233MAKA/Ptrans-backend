@@ -28,10 +28,15 @@ function normalizeLower(value = '') {
   return normalizeText(value).toLowerCase();
 }
 
+function normalizeGithubId(value = '') {
+  return normalizeText(value);
+}
+
 function normalizeUserRecord(record = {}) {
   const isAdmin = Boolean(record.isAdmin);
 
   return {
+    githubId: normalizeGithubId(record.githubId),
     name: normalizeText(record.name),
     email: normalizeLower(record.email),
     githubUsername: normalizeLower(record.githubUsername),
@@ -51,7 +56,8 @@ function readUsers() {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed.map(normalizeUserRecord);
-  } catch {
+  } catch (error) {
+    console.error(`Failed to read users from ${usersFilePath}:`, error.message);
     return [];
   }
 }
@@ -62,23 +68,25 @@ function replaceUsers(users = []) {
 
   const normalized = (Array.isArray(users) ? users : [])
     .map(normalizeUserRecord)
-    .filter((user) => user.email || user.githubUsername);
+    .filter((user) => user.githubId || user.email || user.githubUsername);
 
   fs.writeFileSync(usersFilePath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
   return normalized;
 }
 
-function findPermissionFlagsByIdentity({ githubUsername, email } = {}) {
+function findPermissionFlagsByIdentity({ githubId, githubUsername, email } = {}) {
+  const normalizedGithubId = normalizeGithubId(githubId);
   const normalizedUsername = normalizeLower(githubUsername);
   const normalizedEmail = normalizeLower(email);
 
   const users = readUsers();
   const matchedUser = users.find((user) => {
+    const byGithubId = Boolean(normalizedGithubId && user.githubId && user.githubId === normalizedGithubId);
     const byUsername = Boolean(
       normalizedUsername && user.githubUsername && user.githubUsername === normalizedUsername,
     );
     const byEmail = Boolean(normalizedEmail && user.email && user.email === normalizedEmail);
-    return byUsername || byEmail;
+    return byGithubId || byUsername || byEmail;
   });
 
   if (!matchedUser) {
@@ -102,6 +110,7 @@ function findPermissionFlagsByIdentity({ githubUsername, email } = {}) {
 
 function ensureUserExists(user = {}) {
   const normalizedCandidate = normalizeUserRecord({
+    githubId: user.githubId,
     name: user.name,
     email: user.email,
     githubUsername: user.githubUsername,
@@ -111,12 +120,19 @@ function ensureUserExists(user = {}) {
     canPublish: false,
   });
 
-  if (!normalizedCandidate.email && !normalizedCandidate.githubUsername) {
+  if (
+    !normalizedCandidate.githubId &&
+    !normalizedCandidate.email &&
+    !normalizedCandidate.githubUsername
+  ) {
     return null;
   }
 
   const users = readUsers();
   const existing = users.find((entry) => {
+    const sameGithubId = Boolean(
+      normalizedCandidate.githubId && entry.githubId && entry.githubId === normalizedCandidate.githubId,
+    );
     const sameGithub = Boolean(
       normalizedCandidate.githubUsername &&
         entry.githubUsername &&
@@ -125,10 +141,34 @@ function ensureUserExists(user = {}) {
     const sameEmail = Boolean(
       normalizedCandidate.email && entry.email && entry.email === normalizedCandidate.email,
     );
-    return sameGithub || sameEmail;
+    return sameGithubId || sameGithub || sameEmail;
   });
 
-  if (existing) return existing;
+  if (existing) {
+    const mergedUser = normalizeUserRecord({
+      ...existing,
+      githubId: normalizedCandidate.githubId || existing.githubId,
+      name: normalizedCandidate.name || existing.name,
+      email: normalizedCandidate.email || existing.email,
+      githubUsername: normalizedCandidate.githubUsername || existing.githubUsername,
+    });
+
+    const hasChanged =
+      mergedUser.githubId !== existing.githubId ||
+      mergedUser.name !== existing.name ||
+      mergedUser.email !== existing.email ||
+      mergedUser.githubUsername !== existing.githubUsername;
+
+    if (!hasChanged) return existing;
+
+    const nextUsers = users.map((entry) => {
+      if (entry === existing) return mergedUser;
+      return entry;
+    });
+
+    replaceUsers(nextUsers);
+    return mergedUser;
+  }
 
   const nextUsers = [...users, normalizedCandidate];
   replaceUsers(nextUsers);
