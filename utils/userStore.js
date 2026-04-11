@@ -1,15 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 
-const USERS_FILE_PATH = process.env.USERS_FILE_PATH
+const configuredUsersFilePath = process.env.USERS_FILE_PATH
   ? path.resolve(process.env.USERS_FILE_PATH)
   : '';
+const defaultUsersFilePath = path.resolve(__dirname, '..', '..', '..', '..', 'dashboard-data-admin', 'users.json');
+const fallbackUsersFilePath = path.resolve(__dirname, '..', 'data', 'users.json');
+const USERS_FILE_PATH = configuredUsersFilePath ||
+  (fs.existsSync(path.dirname(defaultUsersFilePath)) ? defaultUsersFilePath : fallbackUsersFilePath);
 
 function getUsersFilePath() {
-  if (!USERS_FILE_PATH) {
-    throw new Error('Missing USERS_FILE_PATH configuration');
-  }
-
   return USERS_FILE_PATH;
 }
 
