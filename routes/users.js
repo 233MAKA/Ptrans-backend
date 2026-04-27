@@ -24,7 +24,14 @@ router.put('/', requireAuth, requirePermission(PERMISSIONS.USERS_MANAGE), (req, 
     return res.status(400).json({ message: 'users must be an array' });
   }
 
-  const savedUsers = replaceUsers(nextUsers);
+  const savedUsers = replaceUsers(nextUsers, {
+    actor: {
+      githubId: req.auth?.user?.githubId,
+      githubUsername: req.auth?.user?.username,
+      name: req.auth?.user?.name,
+      email: req.auth?.user?.email,
+    },
+  });
   return res.status(200).json({ users: savedUsers });
 });
 
