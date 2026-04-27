@@ -23,13 +23,10 @@ function parseNotesFile(content) {
 
 function getEditorIdentity(req) {
   return (
-    req.auth?.user?.email ||
     req.auth?.user?.username ||
     req.auth?.user?.name ||
-    req.user?.email ||
     req.user?.login ||
     req.user?.username ||
-    req.session?.user?.email ||
     req.session?.user?.login ||
     'unknown'
   );

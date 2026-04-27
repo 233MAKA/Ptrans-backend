@@ -29,19 +29,16 @@ function refreshGithubSession(session) {
 
   const githubId = extractGithubId(session.user);
   const login = String(session.user?.username || '').trim().toLowerCase();
-  const email = String(session.user?.email || '').trim().toLowerCase();
 
   ensureUserExists({
     githubId,
     name: session.user?.name || session.user?.username,
-    email,
     githubUsername: login,
   });
 
   const matchedFlags = findPermissionFlagsByIdentity({
     githubId,
     githubUsername: login,
-    email,
   });
   const isAdmin = Boolean(matchedFlags.isAdmin);
   const role = isAdmin ? 'admin' : 'user';

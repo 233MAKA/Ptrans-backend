@@ -157,14 +157,12 @@ router.get('/github/callback', async (req, res) => {
     ensureUserExists({
       githubId: githubUser.id,
       name: githubUser.name || githubUser.login,
-      email: githubUser.email,
       githubUsername: githubUser.login,
     })
 
     const matchedFlags = findPermissionFlagsByIdentity({
       githubId: githubUser.id,
       githubUsername: githubUser.login,
-      email: githubUser.email,
     })
 
     const isAdmin = Boolean(matchedFlags.isAdmin)
@@ -187,7 +185,6 @@ router.get('/github/callback', async (req, res) => {
         githubId: String(githubUser.id),
         name: githubUser.name || githubUser.login,
         username: githubUser.login,
-        email: githubUser.email || null,
         avatarUrl: githubUser.avatar_url,
         profileUrl: githubUser.html_url,
         role,

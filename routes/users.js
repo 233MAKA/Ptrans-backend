@@ -29,7 +29,6 @@ router.put('/', requireAuth, requirePermission(PERMISSIONS.USERS_MANAGE), (req, 
       githubId: req.auth?.user?.githubId,
       githubUsername: req.auth?.user?.username,
       name: req.auth?.user?.name,
-      email: req.auth?.user?.email,
     },
   });
   return res.status(200).json({ users: savedUsers });

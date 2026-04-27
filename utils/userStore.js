@@ -194,7 +194,6 @@ function normalizeUserRecord(record = {}) {
   return {
     githubId: normalizeGithubId(record.githubId),
     name: normalizeText(record.name),
-    email: normalizeLower(record.email),
     githubUsername: normalizeLower(record.githubUsername),
     isAdmin,
     canEdit: isAdmin ? false : Boolean(record.canEdit),
@@ -224,17 +223,16 @@ function replaceUsers(users = [], options = {}) {
 
   const normalized = (Array.isArray(users) ? users : [])
     .map(normalizeUserRecord)
-    .filter((user) => user.githubId || user.email || user.githubUsername);
+    .filter((user) => user.githubId || user.githubUsername);
 
   fs.writeFileSync(usersFilePath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
   autoCommitUsersFile(usersFilePath, options.actor);
   return normalized;
 }
 
-function findPermissionFlagsByIdentity({ githubId, githubUsername, email } = {}) {
+function findPermissionFlagsByIdentity({ githubId, githubUsername } = {}) {
   const normalizedGithubId = normalizeGithubId(githubId);
   const normalizedUsername = normalizeLower(githubUsername);
-  const normalizedEmail = normalizeLower(email);
 
   const users = readUsers();
   const matchedUser = users.find((user) => {
@@ -242,8 +240,7 @@ function findPermissionFlagsByIdentity({ githubId, githubUsername, email } = {})
     const byUsername = Boolean(
       normalizedUsername && user.githubUsername && user.githubUsername === normalizedUsername,
     );
-    const byEmail = Boolean(normalizedEmail && user.email && user.email === normalizedEmail);
-    return byGithubId || byUsername || byEmail;
+    return byGithubId || byUsername;
   });
 
   if (!matchedUser) {
@@ -269,7 +266,6 @@ function ensureUserExists(user = {}) {
   const normalizedCandidate = normalizeUserRecord({
     githubId: user.githubId,
     name: user.name,
-    email: user.email,
     githubUsername: user.githubUsername,
     isAdmin: false,
     canEdit: false,
@@ -279,7 +275,6 @@ function ensureUserExists(user = {}) {
 
   if (
     !normalizedCandidate.githubId &&
-    !normalizedCandidate.email &&
     !normalizedCandidate.githubUsername
   ) {
     return null;
@@ -295,10 +290,7 @@ function ensureUserExists(user = {}) {
         entry.githubUsername &&
         entry.githubUsername === normalizedCandidate.githubUsername,
     );
-    const sameEmail = Boolean(
-      normalizedCandidate.email && entry.email && entry.email === normalizedCandidate.email,
-    );
-    return sameGithubId || sameGithub || sameEmail;
+    return sameGithubId || sameGithub;
   });
 
   if (existing) {
@@ -307,14 +299,12 @@ function ensureUserExists(user = {}) {
       // Preserve admin-managed fields when they are already stored.
       githubId: existing.githubId || normalizedCandidate.githubId,
       name: existing.name || normalizedCandidate.name,
-      email: existing.email || normalizedCandidate.email,
       githubUsername: existing.githubUsername || normalizedCandidate.githubUsername,
     });
 
     const hasChanged =
       mergedUser.githubId !== existing.githubId ||
       mergedUser.name !== existing.name ||
-      mergedUser.email !== existing.email ||
       mergedUser.githubUsername !== existing.githubUsername;
 
     if (!hasChanged) return existing;
