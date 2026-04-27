@@ -65,12 +65,17 @@ function formatTimestamp(date = new Date()) {
   );
 }
 
-async function readIndexDocument() {
+function getGithubUserToken(req) {
+  return req.auth?.provider === 'github' ? req.auth.externalAccessToken : null;
+}
+
+async function readIndexDocument(token) {
   const file = await getRepoFile({
     owner: DOCS_OWNER,
     repo: DOCS_REPO,
     path: INDEX_PATH,
     ref: DOCS_BRANCH,
+    token,
   });
 
   if (!file) {
@@ -108,7 +113,12 @@ router.put(
 
       const nextStatus = normalizeStatusForRepo(requestedStatus);
 
-      const { sha, docs } = await readIndexDocument();
+      const githubUserToken = getGithubUserToken(req);
+      if (!githubUserToken) {
+        return res.status(401).json({ message: 'GitHub user token missing; please sign in again' });
+      }
+
+      const { sha, docs } = await readIndexDocument(githubUserToken);
 
       const doc = docs.find((d) => d.id === docId);
       if (!doc) {
@@ -128,6 +138,7 @@ router.put(
         message: `Update status for ${doc.title} → ${nextStatus}`,
         branch: DOCS_BRANCH,
         sha,
+        token: githubUserToken,
       });
 
       res.json({

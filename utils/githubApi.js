@@ -138,18 +138,8 @@ async function putRepoFile({
   if (sha) {
     body.sha = sha;
   }
-  
-  console.log(`${GH_API}/repos/${owner}/${repo}/contents/${encodedPath}`);
-  console.log(body);
-  console.log(    
-    {
-      headers: ghHeaders(token),
-      httpsAgent: getProxyAgent(),
-      proxy: false,
-    });
 
   const { data } = await axios.put(
-
     `${GH_API}/repos/${owner}/${repo}/contents/${encodedPath}`,
     body,
     {

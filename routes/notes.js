@@ -35,12 +35,17 @@ function getEditorIdentity(req) {
   );
 }
 
-async function readNotesDocument() {
+function getGithubUserToken(req) {
+  return req.auth?.provider === 'github' ? req.auth.externalAccessToken : null;
+}
+
+async function readNotesDocument(token) {
   const file = await getRepoFile({
     owner: DOCS_OWNER,
     repo: DOCS_REPO,
     path: NOTES_PATH,
     ref: DOCS_BRANCH,
+    token,
   });
 
   if (!file) {
@@ -62,7 +67,7 @@ router.get('/:docId', attachSession, async (req, res) => {
   try {
     const { docId } = req.params;
 
-    const { notes } = await readNotesDocument();
+    const { notes } = await readNotesDocument(getGithubUserToken(req));
     const entry = notes[docId] || null;
 
     res.json({
@@ -94,7 +99,12 @@ router.put('/:docId', requireAuth, express.json(), async (req, res) => {
     const { docId } = req.params;
     const note = typeof req.body?.note === 'string' ? req.body.note : '';
 
-    const { sha, notes } = await readNotesDocument();
+    const githubUserToken = getGithubUserToken(req);
+    if (!githubUserToken) {
+      return res.status(401).json({ message: 'GitHub user token missing; please sign in again' });
+    }
+
+    const { sha, notes } = await readNotesDocument(githubUserToken);
 
     notes[docId] = {
       note,
@@ -104,7 +114,7 @@ router.put('/:docId', requireAuth, express.json(), async (req, res) => {
 
     const serialized = JSON.stringify(notes, null, 2) + '\n';
 
-    const title = await getDocumentTitle(docId);
+    const title = await getDocumentTitle(docId, githubUserToken);
 
     await putRepoFile({
       owner: DOCS_OWNER,
@@ -114,6 +124,7 @@ router.put('/:docId', requireAuth, express.json(), async (req, res) => {
       message: `Update note for ${title}`,
       branch: DOCS_BRANCH,
       sha,
+      token: githubUserToken,
     });
 
     res.json({
@@ -169,12 +180,13 @@ router.get('/_debug/file', async (_req, res) => {
   }
 });
 
-async function getDocumentTitle(docId) {
+async function getDocumentTitle(docId, token) {
   const file = await getRepoFile({
     owner: DOCS_OWNER,
     repo: DOCS_REPO,
     path: 'index.json',
     ref: DOCS_BRANCH,
+    token,
   });
 
   if (!file) return docId;
