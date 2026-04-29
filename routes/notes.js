@@ -58,6 +58,35 @@ async function readNotesDocument(token) {
   };
 }
 
+// GET /api/notes
+router.get('/', attachSession, async (req, res) => {
+  try {
+    const { notes } = await readNotesDocument(getGithubUserToken(req));
+
+    res.json({
+      notes: Object.fromEntries(
+        Object.entries(notes).map(([docId, entry]) => [
+          docId,
+          {
+            note: entry?.note || '',
+            updated_at: entry?.updated_at || null,
+            updated_by: entry?.updated_by || null,
+          },
+        ]),
+      ),
+    });
+  } catch (err) {
+    console.error('Failed to load notes');
+    console.error('status:', err.response?.status);
+    console.error('data:', err.response?.data);
+    console.error('message:', err.message);
+
+    res.status(err.response?.status || 500).json({
+      message: err.response?.data?.message || err.message || 'Failed to load notes',
+    });
+  }
+});
+
 // GET /api/notes/:docId
 router.get('/:docId', attachSession, async (req, res) => {
   console.log('GET /api/notes hit', req.params.docId);
