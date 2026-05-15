@@ -1,14 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { getRepoFile, putRepoFile } = require('./githubApi');
-
-const USERS_GITHUB_OWNER = process.env.GITHUB_USERS_OWNER || process.env.GITHUB_DOCS_OWNER;
-const USERS_GITHUB_REPO = process.env.GITHUB_USERS_REPO || '';
-const USERS_GITHUB_BRANCH = process.env.GITHUB_USERS_BRANCH || 'main';
-const USERS_GITHUB_PATH = process.env.GITHUB_USERS_PATH || 'users.json';
-const usesGithubUsersStore = Boolean(USERS_GITHUB_OWNER && USERS_GITHUB_REPO && USERS_GITHUB_PATH);
-const usesGithubUserToken = process.env.GITHUB_USERS_USE_USER_TOKEN === 'true';
 
 const configuredUsersFilePath = process.env.USERS_FILE_PATH
   ? path.resolve(process.env.USERS_FILE_PATH)
@@ -20,23 +12,6 @@ const USERS_FILE_PATH = configuredUsersFilePath ||
 
 function getUsersFilePath() {
   return USERS_FILE_PATH;
-}
-
-function getUsersStoreInfo() {
-  if (usesGithubUsersStore) {
-    return {
-      type: 'github',
-      owner: USERS_GITHUB_OWNER,
-      repo: USERS_GITHUB_REPO,
-      branch: USERS_GITHUB_BRANCH,
-      path: USERS_GITHUB_PATH,
-    };
-  }
-
-  return {
-    type: 'file',
-    path: USERS_FILE_PATH,
-  };
 }
 
 function ensureUsersFileExists() {
@@ -227,110 +202,39 @@ function normalizeUserRecord(record = {}) {
   };
 }
 
-function parseUsersJson(raw = '', source = 'users.json') {
-  try {
-    const parsed = JSON.parse(raw || '[]');
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(normalizeUserRecord);
-  } catch (error) {
-    console.error(`Failed to parse users from ${source}:`, error.message);
-    return [];
-  }
-}
-
-async function readUsersFromGithub(token) {
-  const file = await getRepoFile({
-    owner: USERS_GITHUB_OWNER,
-    repo: USERS_GITHUB_REPO,
-    path: USERS_GITHUB_PATH,
-    ref: USERS_GITHUB_BRANCH,
-    token: usesGithubUserToken ? token : undefined,
-  });
-
-  if (!file) {
-    return {
-      content: '',
-      sha: null,
-      users: [],
-    };
-  }
-
-  return {
-    content: file.content,
-    sha: file.sha,
-    users: parseUsersJson(file.content, `${USERS_GITHUB_REPO}/${USERS_GITHUB_PATH}`),
-  };
-}
-
-function readUsersFromFile() {
+function readUsers() {
   ensureUsersFileExists();
   const usersFilePath = getUsersFilePath();
 
   try {
     const raw = fs.readFileSync(usersFilePath, 'utf8');
-    return parseUsersJson(raw, usersFilePath);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normalizeUserRecord);
   } catch (error) {
     console.error(`Failed to read users from ${usersFilePath}:`, error.message);
     return [];
   }
 }
 
-function normalizeUsersList(users = []) {
+function replaceUsers(users = [], options = {}) {
+  ensureUsersFileExists();
+  const usersFilePath = getUsersFilePath();
+
   const normalized = (Array.isArray(users) ? users : [])
     .map(normalizeUserRecord)
     .filter((user) => user.githubId || user.githubUsername);
-
-  return normalized;
-}
-
-async function readUsers(options = {}) {
-  if (usesGithubUsersStore) {
-    const { users } = await readUsersFromGithub(options.token);
-    return users;
-  }
-
-  return readUsersFromFile();
-}
-
-async function replaceUsers(users = [], options = {}) {
-  const normalized = normalizeUsersList(users);
-
-  if (usesGithubUsersStore) {
-    const currentFile = await readUsersFromGithub(options.token);
-    const message = process.env.USERS_GIT_COMMIT_MESSAGE || 'chore(users): update users.json';
-    const serialized = `${JSON.stringify(normalized, null, 2)}\n`;
-
-    if (currentFile.content === serialized) {
-      return normalized;
-    }
-
-    await putRepoFile({
-      owner: USERS_GITHUB_OWNER,
-      repo: USERS_GITHUB_REPO,
-      path: USERS_GITHUB_PATH,
-      content: serialized,
-      message,
-      branch: USERS_GITHUB_BRANCH,
-      sha: currentFile.sha,
-      token: usesGithubUserToken ? options.token : undefined,
-    });
-
-    return normalized;
-  }
-
-  ensureUsersFileExists();
-  const usersFilePath = getUsersFilePath();
 
   fs.writeFileSync(usersFilePath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
   autoCommitUsersFile(usersFilePath, options.actor);
   return normalized;
 }
 
-async function findPermissionFlagsByIdentity({ githubId, githubUsername } = {}, options = {}) {
+function findPermissionFlagsByIdentity({ githubId, githubUsername } = {}) {
   const normalizedGithubId = normalizeGithubId(githubId);
   const normalizedUsername = normalizeLower(githubUsername);
 
-  const users = await readUsers(options);
+  const users = readUsers();
   const matchedUser = users.find((user) => {
     const byGithubId = Boolean(normalizedGithubId && user.githubId && user.githubId === normalizedGithubId);
     const byUsername = Boolean(
@@ -358,7 +262,7 @@ async function findPermissionFlagsByIdentity({ githubId, githubUsername } = {}, 
   };
 }
 
-async function ensureUserExists(user = {}, options = {}) {
+function ensureUserExists(user = {}) {
   const normalizedCandidate = normalizeUserRecord({
     githubId: user.githubId,
     name: user.name,
@@ -376,7 +280,7 @@ async function ensureUserExists(user = {}, options = {}) {
     return null;
   }
 
-  const users = await readUsers(options);
+  const users = readUsers();
   const existing = users.find((entry) => {
     const sameGithubId = Boolean(
       normalizedCandidate.githubId && entry.githubId && entry.githubId === normalizedCandidate.githubId,
@@ -410,19 +314,18 @@ async function ensureUserExists(user = {}, options = {}) {
       return entry;
     });
 
-    await replaceUsers(nextUsers, options);
+    replaceUsers(nextUsers);
     return mergedUser;
   }
 
   const nextUsers = [...users, normalizedCandidate];
-  await replaceUsers(nextUsers, options);
+  replaceUsers(nextUsers);
   return normalizedCandidate;
 }
 
 module.exports = {
   USERS_FILE_PATH,
   ensureUserExists,
-  getUsersStoreInfo,
   readUsers,
   replaceUsers,
   findPermissionFlagsByIdentity,
