@@ -24,22 +24,28 @@ function hasPermission(auth, permission) {
   return grantedPermissions.includes('*') || grantedPermissions.includes(permission);
 }
 
-function refreshGithubSession(session) {
+async function refreshGithubSession(session) {
   if (!session || session.provider !== 'github' || session.type !== 'user') return session;
 
   const githubId = extractGithubId(session.user);
   const login = String(session.user?.username || '').trim().toLowerCase();
 
-  ensureUserExists({
-    githubId,
-    name: session.user?.name || session.user?.username,
-    githubUsername: login,
-  });
+  await ensureUserExists(
+    {
+      githubId,
+      name: session.user?.name || session.user?.username,
+      githubUsername: login,
+    },
+    { token: session.externalAccessToken },
+  );
 
-  const matchedFlags = findPermissionFlagsByIdentity({
-    githubId,
-    githubUsername: login,
-  });
+  const matchedFlags = await findPermissionFlagsByIdentity(
+    {
+      githubId,
+      githubUsername: login,
+    },
+    { token: session.externalAccessToken },
+  );
   const isAdmin = Boolean(matchedFlags.isAdmin);
   const role = isAdmin ? 'admin' : 'user';
 
@@ -78,31 +84,39 @@ function refreshGithubSession(session) {
   });
 }
 
-function attachSession(req, _res, next) {
+async function attachSession(req, _res, next) {
   const token = parseBearerToken(req);
   if (!token) {
     req.auth = null;
     return next();
   }
 
-  const session = refreshGithubSession(getSession(token));
-  req.auth = session || null;
-  return next();
+  try {
+    const session = await refreshGithubSession(getSession(token));
+    req.auth = session || null;
+    return next();
+  } catch (err) {
+    return next(err);
+  }
 }
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const token = parseBearerToken(req);
   if (!token) {
     return res.status(401).json({ message: 'Missing Authorization header' });
   }
 
-  const session = refreshGithubSession(getSession(token));
-  if (!session) {
-    return res.status(401).json({ message: 'Invalid or expired token' });
-  }
+  try {
+    const session = await refreshGithubSession(getSession(token));
+    if (!session) {
+      return res.status(401).json({ message: 'Invalid or expired token' });
+    }
 
-  req.auth = session;
-  return next();
+    req.auth = session;
+    return next();
+  } catch (err) {
+    return next(err);
+  }
 }
 
 function requirePermission(permission) {
